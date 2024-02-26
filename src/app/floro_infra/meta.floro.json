@@ -1,0 +1,21 @@
+{
+  "moduleFile": "floro.module.js",
+  "repositoryId": "440c2088-89f6-44c2-8afe-08bcf63b5971",
+  "sha": "25429d1707f379d216541eb74a68f86e0acd09631e730a5056b57e4c4d94ee63",
+  "message": "updated main prhase",
+  "idx": 5,
+  "generatorDependencies": {
+    "icon-generator": {
+      "icons": "0.0.40"
+    },
+    "themes-generator": {
+      "theme": "0.0.40"
+    },
+    "palette-generator": {
+      "palette": "0.0.39"
+    },
+    "text-generator": {
+      "text": "0.0.32"
+    }
+  }
+}
