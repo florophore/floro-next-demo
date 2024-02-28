@@ -69,12 +69,12 @@ fs.mkdirSync(localesDirPath);
 
 const localeJSONs = {};
 
-for (const localeCode in localesJSON.locales) {
-    const locale = localesJSON.locales[localeCode];
+for (const localeCode in textJSON.locales) {
+    const locale = textJSON.locales[localeCode];
   if (locale.isGlobalDefault) {
     continue;
   }
-  const jsonString = JSON.stringify(localesJSON.localizedPhraseKeys[locale.localeCode]);
+  const jsonString = JSON.stringify(textJSON.localizedPhraseKeys[locale.localeCode]);
   const sha = shortHash(jsonString);
   const fileName = `${locale.localeCode}.${sha}.json`;
   const filePath = path.join(localesDirPath, fileName)

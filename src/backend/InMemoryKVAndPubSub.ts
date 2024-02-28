@@ -16,7 +16,7 @@ const initCache = JSON.parse(initCacheJson);
 /**
  * Use Redis/Memcached/(equivalent) if you are load balancing your app.
  * This is simply for demoing and is not adequate for production
- * usage beyond a single instance/single threaded demo
+ * usage or anything beyond a single instance/single threaded demo
  */
 
 export default class InMemoryKVAndPubSub{

@@ -41,7 +41,13 @@ export const useIcon = <
     const icon = icons[key] as Icons[T];
     if (variant && icon?.variants && icon.variants[variant as keyof typeof icon.variants]) {
       const variantValues = icon.variants[variant as keyof typeof icon.variants];
+      if (variantValues[currentTheme]?.['src']) {
+        return variantValues[currentTheme]?.['src'];
+      }
       return variantValues[currentTheme];
+    }
+    if ((icons[key].default?.[currentTheme] as unknown as {src: string})?.['src']) {
+      return (icons[key].default?.[currentTheme] as unknown as {src: string})?.['src'];
     }
     return icons[key].default?.[currentTheme];
   }, [icons, currentTheme, variant, key]);

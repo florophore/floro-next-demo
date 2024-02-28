@@ -13,7 +13,7 @@ import { ThemeSet } from "../floro_modules/themes-generator";
 interface Props {
   children: React.ReactElement;
   initLocaleCode: keyof LocalizedPhrases["locales"] & string;
-  //initThemePreference: keyof ThemeSet & string;
+  initThemePreference?: keyof ThemeSet & string;
   text: LocalizedPhrases;
   cdnHost: string;
   localeLoads: {[key: string]: string}
@@ -23,7 +23,7 @@ const FloroMount = (props: Props) => {
   return (
     <FloroDebugProvider>
       <FloroPaletteProvider>
-        <ThemeMount>
+        <ThemeMount initTheme={props.initThemePreference}>
           <FloroIconsProvider>
             <FloroTextProvider text={props.text} cdnHost={props.cdnHost} localeLoads={props.localeLoads} >
               <FloroLocalesProvider initLocaleCode={props.initLocaleCode}>

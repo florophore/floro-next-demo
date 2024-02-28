@@ -5,7 +5,7 @@ const fs = require('fs');
 /**
  * Make sure this points to your root front-end tsconfig
  */
-const tsConfigFilePath =  path.join(__dirname, "../../../tsconfig.json");
+const tsConfigFilePath =  path.join(__dirname, "../../../../../tsconfig.json");
 const project = new Project({
     tsConfigFilePath
   });
@@ -14,7 +14,7 @@ project.resolveSourceFileDependencies();
 const languageService = project.getLanguageService();
 
 const phraseKeys = new Set();
-const localesHooksPath =  path.join(__dirname, "../../hooks/text.ts");
+const localesHooksPath =  path.join(__dirname, "../../hooks/text.tsx");
 const localesHooks = project.getSourceFile(localesHooksPath);
 
 const useRichTextNode = localesHooks.getVariableDeclaration('useRichText');
@@ -40,6 +40,29 @@ for (const sourceRef of usePlainTextSourceRefs) {
     if (callee) {
       const args = callee.getArguments();
       const keyArg = args[0].getText();
+      phraseKeys.add(unescapePhraseKey(keyArg));
+    }
+  }
+}
+
+/***
+ *
+ * You only need this if you need server side strings. This is useful for things that
+ * are not rendered by react, e.g. sms messages, push notifications
+ */
+
+const floroTextStorePath =  path.join(__dirname, "../../../../backend/FloroTextStore.ts");
+const floroTextStoreSource = project.getSourceFile(floroTextStorePath);
+
+const getTextNode = floroTextStoreSource.getVariableDeclaration('getText');
+const getTextSourceRefs = languageService.findReferences(getTextNode.getNameNode());
+for (const sourceRef of getTextSourceRefs) {
+  const refs = sourceRef.getReferences();
+  for (const ref of refs) {
+    const callee = ref.getNode().getParentIfKind(SyntaxKind.CallExpression);
+    if (callee) {
+      const args = callee.getArguments();
+      const keyArg = args[1].getText();
       phraseKeys.add(unescapePhraseKey(keyArg));
     }
   }

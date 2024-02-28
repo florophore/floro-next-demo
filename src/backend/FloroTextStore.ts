@@ -1,14 +1,18 @@
 import metaFile from "../app/floro_infra/meta.floro.json" assert { type: "json" };
 import {
+  Locales,
   LocalizedPhraseKeys,
   LocalizedPhrases,
   PhraseKeyDebugInfo,
   PhraseKeys,
+  getDebugInfo,
+  getPhraseValue,
 } from "../app/floro_infra/floro_modules/text-generator";
 import initText from "../app/floro_infra/floro_modules/text-generator/server-text.json" assert { type: "json" };
 import initLocaleLoads from "../app/floro_infra/floro_modules/text-generator/locale.loads.json" assert { type: "json" };
 import staticStructure from "../app/floro_infra/floro_modules/text-generator/static-structure.json" assert { type: "json" };
 import InMemoryKVAndPubSub from "./InMemoryKVAndPubSub";
+import { PlainTextRenderers, plainTextRenderers } from "@/app/floro_infra/renderers/PlainTextRenderer";
 
 const FLORO_TEXT_PREFIX = `floro_text_repo:${staticStructure.hash}`;
 
@@ -101,6 +105,7 @@ export default class FloroTextStore {
     text: LocalizedPhrases,
     localeLoads: { [key: string]: string }
   ) {
+    // setting should be performed as a transaction
     await InMemoryKVAndPubSub.set(
       `${FLORO_TEXT_PREFIX}:current_sha:${metaFile.repositoryId}:${this.buildSha}`,
       newSha
@@ -158,3 +163,42 @@ export default class FloroTextStore {
     });
   }
 }
+
+export const getText = <
+  K extends keyof PhraseKeys,
+  ARGS extends {
+    [KV in keyof PhraseKeys[K]["variables"]]: PhraseKeys[K]["variables"][KV];
+  } & {
+    [KCV in keyof PhraseKeys[K]["contentVariables"]]: string;
+  } & {
+    [KSC in keyof PhraseKeys[K]["styleClasses"]]: (
+      content: string,
+      styledContentName: keyof PhraseKeys[K]["styledContents"] & string
+    ) => string;
+  }
+>(
+  selectedLocaleCode: keyof LocalizedPhrases["locales"] & string,
+  phraseKey: K,
+  ...opts: keyof ARGS extends { length: 0 }
+    ? [
+        ARGS?,
+        PlainTextRenderers<keyof PhraseKeys[K]["styledContents"] & string>?
+      ]
+    : [
+        ARGS,
+        PlainTextRenderers<keyof PhraseKeys[K]["styledContents"] & string>?
+      ]
+): string => {
+  const textStore = FloroTextStore.getInstance();
+  const floroText = textStore.getText();
+  const args = opts[0] ?? ({} as ARGS);
+  const renderers = opts?.[1] ?? plainTextRenderers;
+  const debugInfo = getDebugInfo(initText.phraseKeyDebugInfo as PhraseKeyDebugInfo, phraseKey);
+  const nodes = getPhraseValue<string, keyof Locales, K>(
+    floroText,
+    selectedLocaleCode,
+    phraseKey,
+    args
+  );
+  return renderers.render(nodes, renderers, debugInfo?.groupName, debugInfo?.phraseKey, selectedLocaleCode);
+};

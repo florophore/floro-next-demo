@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, { MouseEvent } from 'react';
 import {
   StaticNode,
   StaticOrderedListNode,
@@ -6,48 +6,73 @@ import {
   StaticListNode,
   StaticLinkNode,
   StaticTextNode,
-  DebugInfo,
   StaticContentVariable,
   StaticStyledTextNode,
+  PhraseKeys,
 } from '../floro_modules/text-generator';
-import metaFloro from '../floro_modules/meta.floro';
+import { plainTextRenderers } from './PlainTextRenderer';
+
+export interface RichTextProps<T extends keyof PhraseKeys | unknown> {
+  onClickLink?: (
+    linkName: T extends keyof PhraseKeys
+      ? keyof PhraseKeys[T]["links"]
+      : string,
+    linkHref: string
+  ) => void;
+  linkColor?: string;
+  styledContent?: {
+    [Property in keyof (T extends keyof PhraseKeys
+      ? PhraseKeys[T]["styleClasses"]
+      : string)]?: string | undefined;
+  };
+}
 
 export interface TextRenderers<N extends string> {
   render: (
-    nodes: (StaticNode<React.ReactElement> | StaticListNode<React.ReactElement>)[],
+    nodes: (
+      | StaticNode<React.ReactElement>
+      | StaticListNode<React.ReactElement>
+    )[],
     renderers: TextRenderers<N>,
-    isDebugMode: boolean,
-    debugInfo: DebugInfo,
-    debugHex?: `#${string}`,
-    debugTextColorHex?: string,
+    phraseGroup: string,
+    phraseKey: string,
+    localeCode: string,
+    richTextProps?: RichTextProps<unknown>,
   ) => React.ReactElement;
   renderStaticNodes: (
     nodes: (StaticNode<React.ReactElement> | StaticListNode<React.ReactElement>)[],
-    renderers: TextRenderers<N>
+    renderers: TextRenderers<N>,
+    richTextProps?: RichTextProps<unknown>,
   ) => React.ReactElement;
   renderText: (
     node: StaticTextNode<React.ReactElement>,
-    renderers: TextRenderers<N>
+    renderers: TextRenderers<N>,
+    richTextProps?: RichTextProps<unknown>,
   ) => React.ReactElement;
   renderLinkNode: (
     node: StaticLinkNode<React.ReactElement>,
-    renderers: TextRenderers<N>
+    renderers: TextRenderers<N>,
+    richTextProps?: RichTextProps<unknown>,
   ) => React.ReactElement;
   renderListNode: (
     node: StaticListNode<React.ReactElement>,
-    renderers: TextRenderers<N>
+    renderers: TextRenderers<N>,
+    richTextProps?: RichTextProps<unknown>,
   ) => React.ReactElement;
   renderUnOrderedListNode: (
     node: StaticUnOrderedListNode<React.ReactElement>,
-    renderers: TextRenderers<N>
+    renderers: TextRenderers<N>,
+    richTextProps?: RichTextProps<unknown>,
   ) => React.ReactElement;
   renderOrderedListNode: (
     node: StaticOrderedListNode<React.ReactElement>,
-    renderers: TextRenderers<N>
+    renderers: TextRenderers<N>,
+    richTextProps?: RichTextProps<unknown>,
   ) => React.ReactElement;
   renderStyledContentNode: (
     node: StaticStyledTextNode<React.ReactElement, N>,
-    renderers: TextRenderers<N>
+    renderers: TextRenderers<N>,
+    richTextProps?: RichTextProps<unknown>,
   ) => React.ReactElement;
   renderContentVariable: (
     node: StaticContentVariable<React.ReactElement>
@@ -61,7 +86,8 @@ const renderStaticNodes = <N extends string>(
     | StaticContentVariable<React.ReactElement>
     | StaticStyledTextNode<React.ReactElement, N>
   )[],
-  renderers: TextRenderers<N>
+  renderers: TextRenderers<N>,
+  richTextProps?: RichTextProps<unknown>
 ): React.ReactElement => {
   return (
     <>
@@ -69,23 +95,25 @@ const renderStaticNodes = <N extends string>(
         return (
           <React.Fragment key={index}>
             {staticNode.type == 'text' &&
-              renderers.renderText(staticNode, renderers)}
+              renderers.renderText(staticNode, renderers, richTextProps)}
             {staticNode.type == 'link' &&
-              renderers.renderLinkNode(staticNode, renderers)}
+              renderers.renderLinkNode(staticNode, renderers, richTextProps)}
             {staticNode.type == 'li' &&
-              renderers.renderListNode(staticNode, renderers)}
+              renderers.renderListNode(staticNode, renderers, richTextProps)}
             {staticNode.type == 'ul' &&
               renderers.renderUnOrderedListNode(
                 staticNode,
                 renderers,
+                richTextProps
               )}
             {staticNode.type == 'ol' &&
               renderers.renderOrderedListNode(
                 staticNode,
                 renderers,
+                richTextProps
               )}
             {staticNode.type == 'styled-content' &&
-              renderers.renderStyledContentNode(staticNode, renderers)}
+              renderers.renderStyledContentNode(staticNode, renderers, richTextProps)}
             {staticNode.type == 'content' &&
               renderers.renderContentVariable(staticNode)}
           </React.Fragment>
@@ -98,8 +126,9 @@ const renderStaticNodes = <N extends string>(
 const renderText = <N extends string>(
   node: StaticTextNode<React.ReactElement>,
   renderers: TextRenderers<N>,
+  richTextProps?: RichTextProps<unknown>,
 ) => {
-  let children = renderers.renderStaticNodes(node.children, renderers);
+  let children = renderers.renderStaticNodes(node.children, renderers, richTextProps);
   const lineBreaks = node?.content?.split?.("\n") ?? [];
   const breakContent = lineBreaks.map((c, i) => (
     <React.Fragment key={i}>
@@ -138,46 +167,108 @@ const renderText = <N extends string>(
 
 const renderLinkNode = <N extends string>(
   node: StaticLinkNode<React.ReactElement>,
-  renderers: TextRenderers<N>
+  renderers: TextRenderers<N>,
+  richTextProps?: RichTextProps<unknown>,
 ): React.ReactElement => {
-  let children = renderers.renderStaticNodes(node.children, renderers);
-  return <a href={node.href}>{children}</a>;
+  let children = renderers.renderStaticNodes(node.children, renderers, richTextProps);
+
+  if (richTextProps?.onClickLink) {
+    const onPress = (e: MouseEvent<HTMLAnchorElement>) => {
+      e.preventDefault();
+      richTextProps?.onClickLink?.(node.linkName, node.href);
+    };
+    return <a style={richTextProps?.linkColor ? {color: richTextProps.linkColor} : {}} href={node.href} onClick={onPress}>{children}</a>;
+  }
+  return <a style={richTextProps?.linkColor ? {color: richTextProps.linkColor} : {}} href={node.href}>{children}</a>;
 };
 
 const renderListNode = <N extends string>(
   node: StaticListNode<React.ReactElement>,
   renderers: TextRenderers<N>,
+  richTextProps?: RichTextProps<unknown>,
 ): React.ReactElement => {
-  let children = renderers.renderStaticNodes(node.children, renderers);
+  let children = renderers.renderStaticNodes(node.children, renderers, richTextProps);
   return <li>{children}</li>;
 };
 
 const renderUnOrderedListNode = <N extends string,>(
   node: StaticUnOrderedListNode<React.ReactElement>,
-  renderers: TextRenderers<N>
+  renderers: TextRenderers<N>,
+  richTextProps?: RichTextProps<unknown>,
 ): React.ReactElement => {
-  let children = renderers.renderStaticNodes(node.children, renderers);
+  let children = renderers.renderStaticNodes(node.children, renderers, richTextProps);
   return <ul>{children}</ul>;
 };
 
 const renderOrderedListNode = <N extends string,>(
   node: StaticOrderedListNode<React.ReactElement>,
-  renderers: TextRenderers<N>
+  renderers: TextRenderers<N>,
+  richTextProps?: RichTextProps<unknown>,
 ): React.ReactElement => {
-  let children = renderers.renderStaticNodes(node.children, renderers);
+  let children = renderers.renderStaticNodes(node.children, renderers, richTextProps);
   return <ol>{children}</ol>;
 };
 
 const renderStyledContentNode = <N extends string,>(
   node: StaticStyledTextNode<React.ReactElement, N>,
-  renderers: TextRenderers<N>
+  renderers: TextRenderers<N>,
+  richTextProps?: RichTextProps<unknown>,
 ): React.ReactElement => {
-  let children = renderers.renderStaticNodes(node.children, renderers);
-  const content = node?.styleClassFunction?.(children, node.styledContentName) ?? null;
+  const ptNode: StaticStyledTextNode<string, string> = {
+    ...node,
+    styleClassFunction: (str) => {
+      return str;
+    }
+  } as StaticStyledTextNode<string, string>;
+  let plainTextChildren = plainTextRenderers.renderStyledContentNode(
+    ptNode,
+    plainTextRenderers
+  );
+  let children = renderers.renderStaticNodes(node.children, renderers, richTextProps);
+  const content =
+    node?.styleClassFunction?.(
+      children,
+      node.styledContentName,
+      plainTextChildren
+    ) ?? null;
   if (content) {
+    if (
+      richTextProps?.styledContent?.[
+        node.styleClass as keyof typeof richTextProps.styledContent
+      ]
+    ) {
+      return (
+        <span
+          className={
+            richTextProps?.styledContent?.[
+              node.styleClass as keyof typeof richTextProps.styledContent
+            ]
+          }
+        >
+          {content}
+        </span>
+      );
+    }
     return content;
   }
-  return <>{children}</>
+  if (
+    richTextProps?.styledContent?.[
+      node.styleClass as keyof typeof richTextProps.styledContent
+    ]
+  ) {
+    return (
+      <span
+        className={
+          richTextProps?.styledContent?.[
+            node.styleClass as keyof typeof richTextProps.styledContent
+          ]
+        }
+      >
+        {children}
+      </span>
+    );
+  }
+  return <>{children}</>;
 };
 
 const renderContentVariable = (
@@ -192,118 +283,22 @@ const render = <N extends string>(
     | StaticListNode<React.ReactElement>
   )[],
   renderers: TextRenderers<N>,
-  isDebugMode: boolean,
-  debugInfo: DebugInfo,
-  debugHex: `#${string}` = '#FF0000',
-  debugTextColorHex: string = 'white'
+  phraseGroup: string,
+  phraseKey: string,
+  localeCode: string,
+  richTextProps?: RichTextProps<unknown>,
 ): React.ReactElement => {
-  const content = renderers.renderStaticNodes(nodes, renderers);
-  if (isDebugMode) {
-      return (
-        <span
-          onMouseEnter={(e) => {
-            if (e?.currentTarget?.lastChild) {
-              const div = e.currentTarget.lastChild as HTMLDivElement;
-              div.style.display = "block";
-            }
-          }}
-          onMouseLeave={(e) => {
-            if (e?.currentTarget?.lastChild) {
-              const div = e.currentTarget.lastChild as HTMLDivElement;
-              div.style.display = "none";
-            }
-          }}
-          onClick={(e) => {
-            if (e?.currentTarget?.lastChild) {
-              const div = e.currentTarget.lastChild as HTMLDivElement;
-              div.style.display = "block";
-            }
-          }}
-          style={{
-            position: "relative",
-            boxShadow: `inset 0px 0px 0px 1px ${debugHex}`,
-            display: "inherit",
-            fontFamily: "inherit",
-          }}
-        >
-          {content}
-          <span
-            style={{
-              position: "absolute",
-              top: 0,
-              background: `${debugHex}CC`,
-              padding: 8,
-              color: debugTextColorHex,
-              fontWeight: 500,
-              fontSize: "1.2rem",
-              display: "none",
-              fontFamily: "inherit",
-            }}
-          >
-            <span
-              style={{
-                display: "flex",
-                flexDirection: "row",
-              }}
-            >
-              <span style={{ display: "block" }}>
-                <span style={{ display: "block" }}>
-                  {"Phrase Group: "}
-                  <b>{debugInfo.groupName}</b>
-                </span>
-                <span style={{ display: "block" }}>
-                  {"Phrase Key: "}
-                  <b>{debugInfo.phraseKey}</b>
-                </span>
-                <span
-                  onClick={() => {
-                    const channel = new BroadcastChannel(
-                      "floro:plugin:message"
-                    );
-                    channel.postMessage({
-                      repositoryId: metaFloro.repositoryId,
-                      plugin: "text",
-                      eventName: "open:phrase",
-                      message: {
-                        ...debugInfo,
-                      },
-                    });
-                  }}
-                  style={{
-                    display: "block",
-                    textDecoration: "underline",
-                    marginTop: 4,
-                    cursor: "pointer",
-                  }}
-                >
-                  <b>{"OPEN"}</b>
-                </span>
-              </span>
-              <span style={{ marginLeft: 24, display: "block" }}>
-                <span
-                  style={{ cursor: "pointer" }}
-                  onClick={(e) => {
-                    if (
-                      e?.currentTarget?.parentElement?.parentElement
-                        ?.parentElement
-                    ) {
-                      e.stopPropagation();
-                      const div =
-                        e?.currentTarget?.parentElement?.parentElement
-                          ?.parentElement;
-                      div.style.display = "none";
-                    }
-                  }}
-                >
-                  {"X"}
-                </span>
-              </span>
-            </span>
-          </span>
-        </span>
-      );
+  try {
+    return renderers.renderStaticNodes(nodes, renderers, richTextProps);
+  } catch(e) {
+    console.log(
+      "Rich Text Error",
+      `Phrase Group: ${phraseGroup}, Phrase Key: ${phraseKey}, Locale Code: ${localeCode}`,
+      "Error:",
+      e
+    );
+    return <></>;
   }
-  return content
 };
 
 export const richTextRenderers = {

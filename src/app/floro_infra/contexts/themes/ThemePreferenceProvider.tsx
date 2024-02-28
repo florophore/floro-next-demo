@@ -28,6 +28,7 @@ const ThemePreferenceContext = createContext<{
 
 interface Props {
   children: React.ReactElement;
+  initTheme?: keyof ThemeSet;
 }
 
 const useSystemThemePreference = () => {
@@ -59,28 +60,12 @@ const useSystemThemePreference = () => {
 export const ThemePreferenceProvider = (props: Props): React.ReactElement => {
   const [themePreference, setThemePreference] = useState<
     "system" | keyof ThemeSet
-  >("system");
-
-  //useEffect(() => {
-  //  let closureIsFresh = true;
-  //  //AsyncStorage.getItem('theme-preference').then(
-  //  //  (storedPreference: string | null) => {
-  //  //    if (closureIsFresh) {
-  //  //      setThemePreference(
-  //  //        (storedPreference as keyof ThemeSet | 'system') ?? 'system',
-  //  //      );
-  //  //    }
-  //  //  },
-  //  //);
-  //  return () => {
-  //    closureIsFresh = false;
-  //  };
-  //}, []);
+  >(props.initTheme ?? "system");
 
   const selectColorTheme = useCallback(
     (themePreference: "system" | keyof ThemeSet) => {
       setThemePreference(themePreference);
-      setCookie("theme-preference", themePreference);
+      setCookie("NEXT_THEME_PREFERENCE", themePreference);
     },
     []
   );

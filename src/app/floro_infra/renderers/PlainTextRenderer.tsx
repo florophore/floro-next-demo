@@ -13,6 +13,9 @@ import {
     render: (
       nodes: (StaticNode<string> | StaticListNode<string>)[],
       renderers: PlainTextRenderers<N>,
+      phraseGroup: string,
+      phraseKey: string,
+      localeCode: string,
     ) => string;
     renderStaticNodes: (
       nodes: (StaticNode<string> | StaticListNode<string>)[],
@@ -131,9 +134,21 @@ import {
   const render = <N extends string>(
     nodes: (StaticNode<string> | StaticListNode<string>)[],
     renderers: PlainTextRenderers<N>,
+    phraseGroup: string,
+    phraseKey: string,
+    localeCode: string
   ): string => {
-      const content = renderers.renderStaticNodes(nodes, renderers);
-      return content
+    try {
+      return renderers.renderStaticNodes(nodes, renderers);
+    } catch (e) {
+      console.log(
+        "Plain Text Error",
+        `Phrase Group: ${phraseGroup}, Phrase Key: ${phraseKey}, Locale Code: ${localeCode}`,
+        "Error:",
+        e
+      );
+      return "";
+    }
   };
 
   export const plainTextRenderers = {

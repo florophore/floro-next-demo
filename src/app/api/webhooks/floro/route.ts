@@ -13,7 +13,7 @@ import { getJSON } from "@floro/text-generator";
 import FloroTextStore from "@/backend/FloroTextStore";
 import StaticLocaleStorageAccessor from "@/backend/StaticLocalesStorageAccessor";
 
-const initText = importText as LocalizedPhrases;
+const initText = importText as unknown as LocalizedPhrases;
 
 const argsAreSame = (
   existingArgs: { [key: string]: string | number | boolean },
@@ -35,41 +35,47 @@ const getUpdatedText = (localesJSON: LocalizedPhrases): LocalizedPhrases => {
     const localesJSONPhraseKeys =
       localesJSON.localizedPhraseKeys?.[
         localeCode as string & keyof LocalizedPhraseKeys
-      ] ?? {};
+      ] ?? ({} as LocalizedPhrases);
     const initJSONPhraseKeys =
       initText.localizedPhraseKeys?.[
         localeCode as string & keyof LocalizedPhraseKeys
-      ] ?? {};
+      ] ?? ({} as LocalizedPhrases);
     for (let phraseKey in staticStructure.structure) {
       if (
         !localesJSONPhraseKeys?.[
           phraseKey as keyof typeof localesJSONPhraseKeys
         ]
       ) {
-        localesJSONPhraseKeys[phraseKey as keyof PhraseKeys] =
-          initJSONPhraseKeys[phraseKey as keyof PhraseKeys];
+        (localesJSONPhraseKeys[
+          phraseKey as keyof PhraseKeys
+        ] as PhraseKeys[keyof PhraseKeys]) = initJSONPhraseKeys[
+          phraseKey as keyof PhraseKeys
+        ] as PhraseKeys[keyof PhraseKeys];
       } else {
         if (
           !argsAreSame(
             (
               staticStructure?.structure as {
-                [key: string]: { [key: string]: string | number | boolean };
+                [key: string]: {[key: string]: string | number | boolean};
               }
             )?.[phraseKey as string] as {
               [key: string]: string | number | boolean;
             },
             localesJSONPhraseKeys[phraseKey as keyof PhraseKeys].args as {
               [key: string]: string | number | boolean;
-            }
+            },
           )
         ) {
-          localesJSONPhraseKeys[phraseKey as keyof PhraseKeys] =
-            initJSONPhraseKeys[phraseKey as keyof PhraseKeys];
+          (localesJSONPhraseKeys[
+            phraseKey as keyof PhraseKeys
+          ] as PhraseKeys[keyof PhraseKeys]) = initJSONPhraseKeys[
+            phraseKey as keyof PhraseKeys
+          ] as PhraseKeys[keyof PhraseKeys];
         }
       }
     }
     for (let phraseKey in localesJSONPhraseKeys) {
-      if (!staticStructure.structure[phraseKey as keyof PhraseKeys]) {
+      if (!(staticStructure.structure as any)?.[phraseKey as keyof PhraseKeys]) {
         const partialLocalesJSON = localesJSONPhraseKeys as Partial<PhraseKeys>;
         const partialDebugInfo =
           localesJSON.phraseKeyDebugInfo as Partial<PhraseKeyDebugInfo>;
