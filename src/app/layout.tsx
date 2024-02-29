@@ -1,35 +1,31 @@
 import "./globals.css";
-import FloroMount from "./floro_infra/contexts/FloroMount";
 import { cookies } from "next/headers";
 
 import { LocalizedPhrases } from "./floro_infra/floro_modules/text-generator";
-import FloroTextStore from "@/backend/FloroTextStore";
+import FloroTextStore, { getFilteredText } from "@/backend/FloroTextStore";
 import Body from "./Body";
 import { ThemeSet } from "./floro_infra/floro_modules/themes-generator";
+import FloroMount from "./floro_infra/contexts/FloroMount";
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const locale = (cookies().get("NEXT_LOCALE")?.value ||
+export default async function RootLayout(props: { children: React.ReactNode }) {
+  const localeCode = (cookies().get("NEXT_LOCALE")?.value ||
     "EN") as keyof LocalizedPhrases["locales"] & string;
-  const themePreference = cookies().get(
-    "NEXT_THEME_PREFERENCE"
-  )?.value as undefined|keyof ThemeSet & string;
-  const text = FloroTextStore.getInstance().getText();
+  const themePreference = cookies().get("NEXT_THEME_PREFERENCE")?.value as
+    | undefined
+    | (keyof ThemeSet & string);
   const localeLoads = FloroTextStore.getInstance().getLocaleLoads();
+  const text = FloroTextStore.getInstance().getText();
   const cdnHost = ""; // IN PROD THIS SHOULD BE THE URL TO YOUR ASSET CDN/SERVER
 
   return (
     <FloroMount
-      text={text}
-      initLocaleCode={locale}
+      initLocaleCode={localeCode}
       cdnHost={cdnHost}
       localeLoads={localeLoads}
       initThemePreference={themePreference}
+      text={getFilteredText(text, localeCode)}
     >
-      <Body>{children}</Body>
+      <Body>{props.children}</Body>
     </FloroMount>
   );
 }

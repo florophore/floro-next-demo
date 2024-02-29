@@ -1,6 +1,6 @@
 # Floro NextJS Demo App
 
-This repository should serve as both a demo and a guide for integrating Floro into your own application. This demo is built with next 14, but you should be able to use this as a guide to integrating into nearly any node-based server application. It is easiest to get the demo to work first and then copy parts of the demo code into your own application.
+This repository should serve as both a demo and a guide for integrating Floro into your own application. This demo is built with Next 14, but you should be able to use this as a guide to integrating into nearly any node-based server application. It is easiest to get the demo to work first and then copy parts of the demo code into your own application.
 
 ## Getting the Demo to work
 
@@ -11,7 +11,7 @@ npm install -g floro
 ```
 
 #### System Prerequisites
-Built with node v19.9.0 (not sure if that matters)
+Built with node v19.9.0
 
 #### Setup
 
@@ -50,7 +50,6 @@ Click on "create api key" (the green button in the lower left). Name your key wh
 
 ### Attach the API Key to the next-demo repository
 
-
 [Open the @floro/next-demo Repo Here](https://floro.io/app-proxy/repo/@/floro/next-demo?from=local).
 
 <img src="./docs/imgs/click_local_settings.png" width="600">
@@ -65,6 +64,21 @@ Enable the Local API Key you created in the previous step
 
 From the chrome extension popup, enter the secret of the (local) api key you connected to the repo in the previous step.
 
+<img src="./docs/imgs/debug_mode.png" width="600">
+
+If you click "turn on floro edit mode". You should be able to start freely editing the page content without needing to edit any code.
+
+### System Design of Floro Text Updates
+
+<img src="./docs/imgs/system_design_floro_text.jpg" width="800">
+
+Note: By hydration files, we are referring to phrase translations you do not need immediately (they appear under `public/locales/` after a floro build). For example, if you request a page with the spanish cookie specified, the chinese phrases will not be included in the initial page html. When the javascript loads, the phrases for the languages not present in the initial page request will be fetched from your CDN. See src/app/floro_infra/contexts/text/FloroTextContext.tsx
+
+<i>Dislaimer: Due to the limitations of how Next serializes context props in SSR and the inability to double render in layouts, it is not possible to filter the returned keys to only the keys required by the page being rendered in the SSR html. In other words, every time you make a page request, you are returning the entire collection of phrases your application consumes (for the preferred locale). This is an unfortunate side effect of a very leaky SSR abstraction (Next is really designed for SSG not SSR) that not even static analysis or RSC can save us from.  For the vast majority of applications this is likely not a problem, especially if you are supplementing floro with something like a headless CMS. However, if this poses a problem for you there are two options. 1) Forgo real time floro updates (In this case, you may remove the cache and CDN aspects described in the system design). 2) Switch to an alternative framework that allows for manual hydration with SSR (e.g. Remix, Express/Vite)</i>.
+
+<i>Please note: This problem is not limited to Floro but would exist for any i18n solution that provided a mechanism for live string updates.</i>
+
+<i>Also shameless plugin: If your team is reaching the point where you realize its time to get off of Next but don't know what to do, consider hiring me, I'm really good at building robust SSR things.</i>
 
 ### Third Party API Keys
 
@@ -110,6 +124,8 @@ There are some features not explicitly demonstrated in the demo. You can, for ex
 
 - `ts-morph` (dev dep)
     - Only needed if you need live production updates from a floro main branch. Why? We need to do static analysis when syncing text at build time, in order to determine which strings are safe to update when a live production update occurs.
+- `crypto`
+    - Only needed if you want to receive webhook notifications when a floro branch updates. If you have a different hmac library already installed that is fine.
 - `@floro/palette-generator`
     - Needed for floro palette
 - `@floro/themes-generator`
@@ -305,13 +321,216 @@ To confirm the command worked open up `floro_infra/meta.floro.json`
 
 The floro_infra/meta.floro.json should be committed to git (not git ignored). However, it is generated code and should not be manually altered. Resolve git conflicts on it with `floro module sync -b`.
 
-## API Overview
+### You're done integrating the APIs🎉!
 
-### Styles
+### API Demo
 
-### Text
+The entire API is typesafe and provides excellent autocompletion for IDEs that support auto-completion.
 
-The best way to get the hang of the Text api is to look at the code in `src/app/string-examples/StringExamples.tsx`.
+Please see the <a href="https://floro.io/docs">Floro Docs</a> for an in depth review of each of the plugins.
+
+## Themes & Palette
+
+(light theme)
+
+<img src="./docs/imgs/theme_css_api.png" width="800">
+
+(dark theme)
+
+<img src="./docs/imgs/theme_css_dark_api.png" width="800">
+
+The theme and palette contexts will produce global css variables, to modify this behavior you can edit `src/app/Body.tsx`
+
+You're then able to use the variables in your css like so
+
+```css
+
+/* see global.css */
+body {
+  background: var(--background);
+  color: var(--contrast-text);
+  padding: 0;
+  margin: 0;
+}
+
+/* see Home.module.css */
+.link {
+    color: var(--palette-blue-regular);
+    font-size: 1.44rem;
+    font-weight: 600;
+    text-align: center;
+}
+```
+
+You're also able to access your palette and themes in any component. `src/app/components/ThemeSwitcher/index.tsx` has an example of this
+
+(Palette Example)
+
+``` typescript
+  const { currentTheme, selectColorTheme } = useThemePreference();
+  const palette = useFloroPalette();
+
+  const isLight = useMemo(() => {
+    return currentTheme == "light";
+  }, [currentTheme]);
+```
+
+(Theme Example with Variant States)
+
+``` typescript
+  const isHovered = useState(false);
+  const iconColor = useThemedColor("icon-single-contrast", isHovered ?  "hovered" : "default");
+```
+You can add variant states to your themes (e.g. "hover", "focus", "selected", "Etc."). These states can also be accessed in css vars.
+
+You can add your own theme determination logic or use the theme prefence selector that comes with floro.
+``` typescript
+  const { currentTheme, selectColorTheme } = useThemePreference();
+```
+
+
+## Icons (SVGs)
+
+Floro also allows designers to  add svgs to the codebase without having to go through git or any engineering processes. In addition Icons can be themed and use state variants as well.
+
+(light theme)
+
+<img src="./docs/imgs/theme_pref_light.png" width="800">
+
+(dark theme)
+
+<img src="./docs/imgs/theme_pref_dark.png" width="800">
+
+This makes color refactors a breeze since all of the SVGs are mapped to your floro palette and theme map.
+
+What does the icon api look like? The LanguageSelect gives a good example see `src/app/components/LanguageSelect/index.tsx`
+
+```typescript
+  const [isHovered, setIsHovered] = useState(false);
+
+  const langIcon = useIcon(
+    "front-page.language",
+    isHovered ? "hovered" : undefined
+  );
+  const dropdownIcon = useIcon(
+    "front-page.drop-down-arrow",
+    isHovered ? "hovered" : undefined
+  );
+
+  const { selectedLocaleCode, setSelectedLocaleCode } = useFloroLocales();
+  ...
+
+  return (
+    ...
+      <div
+        className={styles["image-wrapper"]}
+        onMouseEnter={() => setIsHovered(true)}
+      >
+        <img className={styles.icon} src={langIcon} />
+        <img className={styles.icon} src={dropdownIcon} />
+      </div>
+    ...
+  )
+```
+
+## Text
+The best way to get the hang of the Text API is to look at the code in `src/app/string-examples/StringExamples.tsx`.
+
+<img src="./docs/imgs/pluralization_example.png" width="800">
+
+The corresponding typescript looks like the following
+
+```typescript
+// we use rich text for component strings
+const PluralizationAndGrammar = useRichText(
+  "string_examples.pluralization_and_grammar"
+);
+
+...
+
+const onPressShopifyLinkExample = useCallback(
+  (
+    linkName: keyof PhraseKeys["string_examples.pluralization_and_grammar"]["links"],
+    linkHref: string
+  ) => {
+    if (linkName == "shopify article") {
+      window.open(linkHref, "_blank");
+    }
+  },
+  []
+);
+
+const [gender, setGender] = useState("female");
+// we use plain text for the placeholder
+const enterGenderInput = usePlainText(
+  "string_examples.enter_gender_input_placeholder"
+);
+
+const renderTitle = useCallback((content: React.ReactElement) => {
+  return <h2 className={styles["example-title"]}>{content}</h2>;
+}, []);
+
+const renderSmallTitle = useCallback((content: React.ReactElement) => {
+  return <h3 className={styles["example-small-title"]}>{content}</h3>;
+}, []);
+
+return (
+  ...
+    <PluralizationAndGrammar
+      title={renderTitle}
+      smallTitle={renderSmallTitle}
+      richTextOptions={{
+        linkColor: palette?.blue.regular ?? "blue",
+        onClickLink: onPressShopifyLinkExample,
+      }}
+      inputContent={
+        <>
+          <input
+            className={styles["input"]}
+            type="text"
+            value={numberOfFilesString}
+            onChange={(event) => {
+              setNumberOfFiles(event.target.value);
+            }}
+            placeholder={enterNumberOfFilesPlaceholder}
+          />
+        </>
+      }
+      gender={gender}
+      numberOfFiles={numberOfFiles}
+      place={place}
+      placeSuffix={placeSuffix}
+      genderInputContent={
+        <>
+          <input
+            className={styles["input"]}
+            type="text"
+            value={gender}
+            onChange={(event) => {
+              setGender(event.target.value);
+            }}
+            placeholder={enterGenderInput}
+          />
+        </>
+      }
+      placeInput={
+        <>
+          <input
+            className={styles["input"]}
+            type="text"
+            value={placeString}
+            onChange={(event) => {
+              setPlaceString(event.target.value);
+            }}
+            placeholder={enterPlacePlaceholder}
+          />
+        </>
+      }
+    />
+  ...
+)
+
+```
 
 below is the complete set of options for working with the rich text api
 ```typescript
@@ -327,19 +546,13 @@ export interface RichTextProps<T extends keyof PhraseKeys | unknown> {
     [Property in keyof (T extends keyof PhraseKeys
       ? PhraseKeys[T]["styleClasses"]
       : object)]: string | undefined;
-  };
-  // when you create a styledClass in floro you can automatically define the corresponding styledContent class to use here
+  }; // when you create a styledClass in floro you can automatically define the corresponding styledContent class to use here
 }
 
 ```
 
-### You're done integrating the APIs🎉! You're still pointing at the wrong floro repository but we'll fix that in second.
 
-### API Demo
 
-The entire API is typesafe and provides excellent autocompletion for IDEs that support auto-completion.
-
-Please see the <a href="https://floro.io/docs">Floro Docs</a> for an in depth review of each of the plugins.
 
 ## Eliminating what we don't need
 
@@ -388,7 +601,7 @@ export default FloroMount;
 ## Syncing your Strings with your Remote Floro Repository
 #### (skip this if you don't need the text plugin or you don't want real time string updates)
 
-Floro allows you to make live updates to your string content without requiring any code OTA tools. It also can do this safely because of some static analysis we perform on the code when you compile it. This can be hugely valuable for you and your team, since you can make instant changes to your production string copy without needing to produce a new build.
+Floro allows you to make live updates to your string content without requiring re-deployment. It also can do this safely because of some static analysis we perform on the code when you compile it. This can be hugely valuable for you and your team, since you can make instant changes to your production string copy without needing to produce a new build.
 
 ### Example of string safe updates
 
@@ -428,7 +641,7 @@ Phrase 2)
 cart_total(n: number)
 ```
 
-As long as the signatures of a phrase match, we can assume it is safe to update the implementation details. When there is an update, we just update the strings where the signatures match exactly.
+As long as the signatures of a phrase interface match, we can assume it is safe to update the implementation details. When there is an update, we just update the strings where the signatures match exactly.
 
 If you look at the file `src/app/floro_infra/floro_modules/text-generator/static-structure.json`, you'll see the following JSON
 
@@ -501,7 +714,7 @@ const fs = require('fs');
 /**
  * Make sure this points to your root front-end tsconfig
  */
-const tsConfigFilePath =  path.join(__dirname, "../../../tsconfig.json"); // if for some reason your tsconfig is not in your root, udpate this path
+const tsConfigFilePath =  path.join(__dirname, "../../../../../tsconfig.json");
 const project = new Project({
     tsConfigFilePath
   });
@@ -536,6 +749,29 @@ for (const sourceRef of usePlainTextSourceRefs) {
     if (callee) {
       const args = callee.getArguments();
       const keyArg = args[0].getText();
+      phraseKeys.add(unescapePhraseKey(keyArg));
+    }
+  }
+}
+
+/***
+ *
+ * You only need this (getText) if you need server side strings. This is useful for things that
+ * are not rendered by react, e.g. sms messages, push notifications, meta tags/server components
+ */
+
+const floroTextStorePath =  path.join(__dirname, "../../../../backend/FloroTextStore.ts");
+const floroTextStoreSource = project.getSourceFile(floroTextStorePath);
+
+const getTextNode = floroTextStoreSource.getVariableDeclaration('getText');
+const getTextSourceRefs = languageService.findReferences(getTextNode.getNameNode());
+for (const sourceRef of getTextSourceRefs) {
+  const refs = sourceRef.getReferences();
+  for (const ref of refs) {
+    const callee = ref.getNode().getParentIfKind(SyntaxKind.CallExpression);
+    if (callee) {
+      const args = callee.getArguments();
+      const keyArg = args[1].getText();
       phraseKeys.add(unescapePhraseKey(keyArg));
     }
   }
@@ -599,24 +835,47 @@ In order to sync text in production we need to make a webhook that makes an API 
 
 <img src="./docs/imgs/dev_settings.png" width="600">
 
-
 3) Create a Remote API Key
 
 <img src="./docs/imgs/create_remote_api_key.png" width="600">
 
-4) Navigate to your remote repo
+4) Create a Remote Webhook Key
 
-5) Click "remote settings"
+<img src="./docs/imgs/create_remote_webhook.png" width="600">
+
+5) Verify your Remote Webhook Domain
+
+<img src="./docs/imgs/verify_remote_webhook.png" width="600">
+
+6) Create Local Webhook (optional, for local development)
+
+(This is done from your personal dashboard, not an organization's dashboard)
+
+<img src="./docs/imgs/create_local_webhook.png" width="600">
+
+7) Navigate to your local repo
+
+8) Click "local settings"
+
+<img src="./docs/imgs/click_local_settings.png" width="600">
+
+9) Enable the Local Keys and setup the webhook for Development
+
+<img src="./docs/imgs/enable_locals.png" width="600">
+
+10) Navigate to your remote repo
+
+11) Click "remote settings"
 
 <img src="./docs/imgs/click_remote_settings.png" width="600">
 
-6) Click "Configure API Settings"
+12) Click "Configure API Settings"
 
 <img src="./docs/imgs/click_configure_api_key.png" width="600">
 
-7) Enable the remote key
+13) Enable the remote api keys (you may have separate keys for ci vs runtime) and add your production webhook call
 
-<img src="./docs/imgs/enable_remote_key.png" width="600">
+<img src="./docs/imgs/enable_remote.png" width="600">
 
 
 ### Developing with Floro
@@ -627,7 +886,7 @@ Whatever the case may be you, if you are adding content to floro and developing 
 
 #### (Re)Building your WIP
 
-The command you will run all the time is `floro module current` from the `floro_infra` directory or `floro module current -m floro_infra/floro.module.js` from the root of your project.
+The command you will run all the time is `floro module current` from the `floro_infra` directory or `floro module current -m src/app/floro_infra/floro.module.js` from the root of your project.
 
 This builds your current <i>work in progress</i> state without changing the `meta.floro.json` file. Just remember to commit and push to floro before pushing to git.
 
@@ -641,6 +900,8 @@ Floro has a command `floro module watch` that you can run from the `floro_infra`
 We recommend gitignoring floro_modules. However, if you are a solo developer, it may be easiest to just commit your floro_modules.
 
 If you do gitignore your floro_modules you may have to do some CI work to add pulling floro module state to your CI workflow. Please see the <a href="https://floro.io/docs">floro docs</a>.
+
+Here is how the floro website builds floro_modules in CI. See [Github Actions Example](https://github.com/florophore/floro-mono/blob/main/.github/workflows/create_build.yaml#L66).
 
 
 ### Your README.md

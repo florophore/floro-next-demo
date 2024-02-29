@@ -12,9 +12,9 @@ import { ThemeSet } from "../floro_modules/themes-generator";
 
 interface Props {
   children: React.ReactElement;
+  text: LocalizedPhrases;
   initLocaleCode: keyof LocalizedPhrases["locales"] & string;
   initThemePreference?: keyof ThemeSet & string;
-  text: LocalizedPhrases;
   cdnHost: string;
   localeLoads: {[key: string]: string}
 }

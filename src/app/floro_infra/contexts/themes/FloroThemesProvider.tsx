@@ -1,13 +1,13 @@
 "use client"
 
-import React, {useContext} from 'react';
+import React, {useCallback, useContext, useMemo} from 'react';
 import metaFile from '../../meta.floro.json';
 import initThemes, {
   ThemeColors,
 } from '../../floro_modules/themes-generator/index';
 import {getJSON} from '@floro/themes-generator';
 import {useWatchFloroState} from '../../hooks/watch';
-import {ColorTheme} from './ColorThemeProvider';
+import {ColorTheme, useColorTheme} from './ColorThemeProvider';
 
 const FloroThemesContext = React.createContext(initThemes);
 export interface Props {
@@ -42,3 +42,13 @@ export const makeThemeCallback = <K extends keyof ThemeColors>(
     return colorThemes[key]?.default ?? defaultValue ?? 'transparent';
   };
 };
+
+export const useThemedColor = <K extends keyof ThemeColors>(
+    key: K,
+    variantKey: keyof ThemeColors[K]['variants'] | 'default',
+    defaultValue?: string,
+) => {
+  const colorTheme = useColorTheme();
+  const callback = useMemo(() => makeThemeCallback(colorTheme),[colorTheme])
+  return useMemo(() => callback(key, variantKey as "default", defaultValue), [key, variantKey, defaultValue])
+}

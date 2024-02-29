@@ -4,7 +4,7 @@ import React, { useContext, useMemo, useState, useCallback } from "react";
 import {
   LocalizedPhrases,
 } from "../../floro_modules/text-generator";
-import defaultText from "../../floro_modules/text-generator/text.json";
+import defaultText from "../../floro_modules/text-generator/default.text";
 import { useFloroText } from "./FloroTextContext";
 import { setCookie } from "cookies-next";
 

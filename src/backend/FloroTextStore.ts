@@ -68,7 +68,6 @@ export default class FloroTextStore {
             this.currentLocaleLoadsString = localeLoadsString;
           }
         }
-
       }
     );
 
@@ -201,4 +200,41 @@ export const getText = <
     args
   );
   return renderers.render(nodes, renderers, debugInfo?.groupName, debugInfo?.phraseKey, selectedLocaleCode);
+};
+
+
+const pluckPhraseKeys = (
+  phraseKeys: PhraseKeys,
+) => {
+  return (Object.keys(staticStructure.structure) as Array<keyof PhraseKeys>).reduce((acc, key) => {
+    return {
+      ...acc,
+      [key]: phraseKeys[key]
+    }
+  }, {});
+}
+
+export const getFilteredText = (
+  text: LocalizedPhrases,
+  localeCode: keyof LocalizedPhrases["locales"]
+): LocalizedPhrases => {
+  if (text.localizedPhraseKeys[localeCode] && localeCode != "EN") {
+    const localePhrases = pluckPhraseKeys(text.localizedPhraseKeys[localeCode]) as PhraseKeys;
+    const enLocalePhrases = pluckPhraseKeys(text.localizedPhraseKeys["EN"]) as PhraseKeys;
+    return {
+      ...text,
+      localizedPhraseKeys: {
+        EN: enLocalePhrases,
+        [localeCode]: localePhrases,
+      } as unknown as LocalizedPhrases["localizedPhraseKeys"],
+    };
+  }
+
+  const localePhrases = pluckPhraseKeys(text.localizedPhraseKeys["EN"]);
+  return {
+    ...text,
+    localizedPhraseKeys: {
+      EN: localePhrases,
+    } as unknown as LocalizedPhrases["localizedPhraseKeys"],
+  };
 };

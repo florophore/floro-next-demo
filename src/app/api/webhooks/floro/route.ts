@@ -185,6 +185,7 @@ export async function POST(req: Request) {
         const textUpdateJSON: LocalizedPhrases = await getJSON(state.store);
         const textUpdate = getUpdatedText(textUpdateJSON);
         const loadsLoads: { [key: string]: string } = {};
+
         for (const localeCode in textUpdate.localizedPhraseKeys) {
           const jsonString = JSON.stringify(
             textUpdate.localizedPhraseKeys[

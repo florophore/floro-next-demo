@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useContext, useEffect, useState } from "react";
+import React, { useContext, useEffect, useMemo, useState } from "react";
 import metaFile from "../../floro_modules/meta.floro";
 import { LocalizedPhrases, PhraseKeys } from "../../floro_modules/text-generator";
 import defaultText from "../../floro_modules/text-generator/default.text";
@@ -17,7 +17,7 @@ interface Props {
 }
 
 export const FloroTextProvider = (props: Props) => {
-  const [text, setText] = useState<LocalizedPhrases>(props?.text ?? defaultText as unknown as LocalizedPhrases);
+  const [text, setText] = useState<LocalizedPhrases>(props.text as unknown as LocalizedPhrases);
 
   useEffect(() => {
     (async () => {
