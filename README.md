@@ -2,6 +2,7 @@
 
 This repository should serve as both a demo and a guide for integrating Floro into your own application. This demo is built with Next 14, but you should be able to use this as a guide to integrate into nearly any node-based server application. It is easiest to get the demo to work first and then copy parts of the demo code into your own application.
 
+
 ## Getting the Demo to work
 
 You will need the floro cli to build the floro modules
@@ -76,11 +77,11 @@ If you click "turn on floro edit mode". You should be able to start freely editi
 
 Note: By hydration files, we are referring to phrase translations you do not need immediately (they appear under `public/locales/` after a floro build). For example, if you request a page with the spanish cookie specified, the chinese phrases will not be included in the initial page html. When the javascript loads, the phrases for the languages not present in the initial page request will be fetched from your CDN. See `src/app/floro_infra/contexts/text/FloroTextContext.tsx`
 
-<i>Dislaimer: Due to the limitations of how Next serializes context props in SSR and the inability to double render in layouts, it is not possible to filter the returned keys to only the keys required by the page being rendered in the SSR html. In other words, every time you make a page request, you are returning the entire collection of phrases your application consumes (for the preferred locale). This is an unfortunate side effect of a very leaky SSR abstraction (Next is really designed for SSG not SSR) that not even static analysis or RSC can save us from.  For the vast majority of applications this is likely not a problem, especially if you are supplementing floro with something like a headless CMS. However, if this poses a problem for you there are two options. 1) Forgo real time floro updates (In this case, you may remove the cache and CDN aspects described in the system design). 2) Switch to an alternative framework that allows for manual hydration with SSR (e.g. Remix, Express/Vite)</i>.
+<i>Disclaimer: Due to the limitations of how Next serializes context props in SSR and the inability to double render in layouts, it is not possible to filter the returned keys to only the keys required by the page being rendered in the SSR html. In other words, every time you make a page request, you are returning the entire collection of phrases your application consumes (for the preferred locale). This is an unfortunate side effect of a very leaky SSR abstraction (Next is really designed for SSG not SSR) that not even static analysis or RSC can save us from.  For the vast majority of applications this is likely not a problem, especially if you are supplementing floro with something like a headless CMS. However, if this poses a problem for you there are two options. 1) Forgo real time floro updates (In this case, you may remove the cache and CDN aspects described in the system design). 2) Switch to an alternative framework that allows for manual hydration with SSR (e.g. Remix, Express/Vite)</i>.
 
 <i>Please note: This problem is not limited to Floro but would exist for any i18n solution that provided a mechanism for live string updates.</i>
 
-<i>Also shameless plug: If your team is reaching the point where you realize its time to get off of Next but don't know what to do, consider hiring me, I'm really good at building robust SSR frameworks.</i>
+<i>Also shameless plug: If your team is reaching the point where you realize its time to get off of Next but don't know what to do, consider hiring me, I'm really good at building robust SSR frameworks. Here is how our <a href="https://github.com/florophore/floro-mono/blob/main/packages/servers/src/AppServer.ts#L227">Vite + Express</a> implementation looks.</i>
 
 ### Third Party API Keys
 
@@ -170,7 +171,7 @@ Let's proceed!
 
 ### Create a Floro Repository (if you haven't already)
 
-If you are working on your project on behalf of an organization and intend to have multiple collaborative stakeholders, you should probably start an organization in floro and create the repository under the organization's account. At the time of writing this repositories cannot be transferred (they can be copied though). If you are a solo developer and don't expect to need to give edit permission to many others, feel free to create a personal repository. All personal and public (including organization) repositories are free of charge without any feature restrictions on floro.io, no payment details required.
+If you are working on your project on behalf of an organization and intend to have multiple collaborative stakeholders, you should probably start an organization in floro and create the repository under the organization's account. At the time of writing this, repositories cannot be transferred (they can be copied though). If you are a solo developer and don't expect to need to give edit permission to many others, feel free to create a personal repository. All personal and public (including organization) repositories are free of charge without any feature restrictions on floro.io, no payment details required.
 
 From either your "home dashboard" or your "organization's dashboard" click <b>create repository</b> in the lower left hand corner of the screen.
 
@@ -321,7 +322,7 @@ To confirm the command worked open up `floro_infra/meta.floro.json`
 
 ```
 
-The floro_infra/meta.floro.json should be committed to git (not git ignored). However, it is generated code and should not be manually altered. Resolve git conflicts on it with `floro module sync -b`.
+The floro_infra/meta.floro.json should be committed to git (not git ignored). It is generated code and should NOT be manually altered. Resolve git conflicts on it with `floro module sync -b`.
 
 ### You're done integrating the APIs🎉!
 
@@ -329,7 +330,7 @@ The floro_infra/meta.floro.json should be committed to git (not git ignored). Ho
 
 The entire API is typesafe and provides excellent autocompletion for IDEs that support auto-completion.
 
-Please see the <a href="https://floro.io/docs">Floro Docs</a> for an in depth review of each of the plugins.
+Please see the <a href="https://floro.io/docs">Floro Docs</a> for an in depth overview of each of the plugins.
 
 ## Themes & Palette
 
@@ -435,7 +436,6 @@ What does the icon api look like? The LanguageSelect gives a good example see `s
     isHovered ? "hovered" : undefined
   );
 
-  const { selectedLocaleCode, setSelectedLocaleCode } = useFloroLocales();
   ...
 
   return (
@@ -568,8 +568,6 @@ export interface RichTextProps<T extends keyof PhraseKeys | unknown> {
 }
 
 ```
-
-
 
 
 ## Eliminating what we don't need
