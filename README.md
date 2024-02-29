@@ -1,6 +1,6 @@
 # Floro NextJS Demo App
 
-This repository should serve as both a demo and a guide for integrating Floro into your own application. This demo is built with Next 14, but you should be able to use this as a guide to integrating into nearly any node-based server application. It is easiest to get the demo to work first and then copy parts of the demo code into your own application.
+This repository should serve as both a demo and a guide for integrating Floro into your own application. This demo is built with Next 14, but you should be able to use this as a guide to integrate into nearly any node-based server application. It is easiest to get the demo to work first and then copy parts of the demo code into your own application.
 
 ## Getting the Demo to work
 
@@ -72,13 +72,13 @@ If you click "turn on floro edit mode". You should be able to start freely editi
 
 <img src="./docs/imgs/system_design_floro_text.jpg" width="800">
 
-Note: By hydration files, we are referring to phrase translations you do not need immediately (they appear under `public/locales/` after a floro build). For example, if you request a page with the spanish cookie specified, the chinese phrases will not be included in the initial page html. When the javascript loads, the phrases for the languages not present in the initial page request will be fetched from your CDN. See src/app/floro_infra/contexts/text/FloroTextContext.tsx
+Note: By hydration files, we are referring to phrase translations you do not need immediately (they appear under `public/locales/` after a floro build). For example, if you request a page with the spanish cookie specified, the chinese phrases will not be included in the initial page html. When the javascript loads, the phrases for the languages not present in the initial page request will be fetched from your CDN. See `src/app/floro_infra/contexts/text/FloroTextContext.tsx`
 
 <i>Dislaimer: Due to the limitations of how Next serializes context props in SSR and the inability to double render in layouts, it is not possible to filter the returned keys to only the keys required by the page being rendered in the SSR html. In other words, every time you make a page request, you are returning the entire collection of phrases your application consumes (for the preferred locale). This is an unfortunate side effect of a very leaky SSR abstraction (Next is really designed for SSG not SSR) that not even static analysis or RSC can save us from.  For the vast majority of applications this is likely not a problem, especially if you are supplementing floro with something like a headless CMS. However, if this poses a problem for you there are two options. 1) Forgo real time floro updates (In this case, you may remove the cache and CDN aspects described in the system design). 2) Switch to an alternative framework that allows for manual hydration with SSR (e.g. Remix, Express/Vite)</i>.
 
 <i>Please note: This problem is not limited to Floro but would exist for any i18n solution that provided a mechanism for live string updates.</i>
 
-<i>Also shameless plugin: If your team is reaching the point where you realize its time to get off of Next but don't know what to do, consider hiring me, I'm really good at building robust SSR things.</i>
+<i>Also shameless plug: If your team is reaching the point where you realize its time to get off of Next but don't know what to do, consider hiring me, I'm really good at building robust SSR frameworks.</i>
 
 ### Third Party API Keys
 
@@ -277,7 +277,7 @@ Options:
 
 #### Now run
 ```bash
-# cwd = <your_project_root>/floro_infra
+# cwd = <your_project_root>/src/app/floro_infra
 floro module sync -l -b
 ```
 
@@ -597,6 +597,40 @@ export default FloroMount;
 
 ```
 
+# Update your RootLayout
+
+Your root layout should look something like this now. You do not need the `Body` component unless you want css vars generated from Floro.
+
+```typescript
+export default async function RootLayout(props: { children: React.ReactNode }) {
+  // this does not need to be a cookie, it can come from next's routing logic. Just make sure the localeCodes map correctly
+  const localeCode = (cookies().get("NEXT_LOCALE")?.value ||
+    "EN") as keyof LocalizedPhrases["locales"] & string;
+  // You can use whatever mechanis you like for determining the theme preference. The theme cookie is not necessary
+  const themePreference = cookies().get("NEXT_THEME_PREFERENCE")?.value as
+    | undefined
+    | (keyof ThemeSet & string);
+  // This is the names of the phrase files for the JS to preload from your CDN after init page load
+  const localeLoads = FloroTextStore.getInstance().getLocaleLoads();
+  // this is the global text object
+  const text = FloroTextStore.getInstance().getText();
+  const cdnHost = ""; // IN PROD THIS SHOULD BE THE URL TO YOUR ASSET CDN/SERVER
+
+  return (
+    <FloroMount
+      initLocaleCode={localeCode}
+      cdnHost={cdnHost}
+      localeLoads={localeLoads}
+      initThemePreference={themePreference}
+      text={getFilteredText(text, localeCode)}
+    >
+      <Body>{props.children}</Body>
+    </FloroMount>
+  );
+}
+
+```
+
 
 ## Syncing your Strings with your Remote Floro Repository
 #### (skip this if you don't need the text plugin or you don't want real time string updates)
@@ -823,9 +857,412 @@ return (
 ```
 
 
-## Syncing Text
+## Syncing Text (Backend)
 
 In order to sync text in production we need to make a webhook that makes an API call when the user opens the app to check the commit state of the remote <b>main</b> branch on floro.
+
+This implementation allows you to perform OTA text updates (safely!), which can be extremely handy.
+
+### What you need
+
+1) A KV Store (E.g. Redis or Memcached)
+
+2) A PubSub (E.g. Redis or RabbitMQ)
+
+Please see `src/backend/InMemoryKVAndPubSub.ts`. This is NOT PRODUCTION READY (you may not need this if you have something like redis.io)!
+
+```typescript
+export default class InMemoryKVAndPubSub{
+
+    /**
+     * PUBSUB API
+     */
+
+    private static subscribers: {
+        [key: string]: Array<(...args: unknown[]) => void>
+    } = {};
+
+    public static subscribe<T extends unknown[]>(key: string, callback: (...args: T) => void): () => void {
+        if (!this.subscribers[key]) {
+            this.subscribers[key] = [];
+        }
+
+        this.subscribers[key].push(callback as (...args: unknown[]) => void);
+
+        // unsubscribe
+        return () => {
+            const index = this.subscribers[key].indexOf(callback as (...args: unknown[]) => void)
+            this.subscribers[key].splice(index, 1);
+        }
+    }
+
+    public static publish<T extends unknown[]>(key: string, ...args: T) {
+        for (const callback of this.subscribers?.[key] ?? []) {
+            callback(...args);
+        }
+    }
+
+    /**
+     * CACHE API
+     */
+
+    private static cache: {
+        [key: string]: string
+    } = initCache;
+
+    public static async set(key: string, value: string) {
+        this.cache[key] = value;
+        await fs.promises.writeFile(cacheFile, JSON.stringify(this.cache, null, 2), 'utf-8')
+    }
+
+    public static get(key: string) {
+        return this.cache?.[key] ?? null;
+    }
+
+    public static async delete(key: string) {
+        delete this.cache?.[key];
+        await fs.promises.writeFile(cacheFile, JSON.stringify(this.cache, null, 2), 'utf-8')
+    }
+}
+```
+
+[Here is the floro production text store](https://github.com/florophore/floro-mono/blob/main/packages/redis/src/stores/FloroTextStore.ts)
+
+You will need to implement a text store of sorts. The one implemented in this example looks like the following
+
+```typescript
+export default class FloroTextStore {
+  public buildText: LocalizedPhrases = initText as unknown as LocalizedPhrases;
+  public currentText: LocalizedPhrases =
+    initText as unknown as LocalizedPhrases;
+  public currentTextString: string = JSON.stringify(initText);
+  public currentLocaleLoads: { [key: string]: string } =
+    initLocaleLoads as unknown as { [key: string]: string };
+  public currentLocaleLoadsString: string = JSON.stringify(
+    initLocaleLoads,
+    null,
+    2
+  );
+  public buildSha: string = metaFile.sha;
+  public currentSha: string = metaFile.sha;
+  public buildRepoId: string = metaFile.repositoryId;
+  public buildBranch: string = "main";
+  private static _instance?: FloroTextStore;
+
+  public static getInstance(): FloroTextStore {
+    if (!this._instance) {
+        this._instance = new FloroTextStore();
+        this._instance.onReady();
+    }
+    return this._instance;
+  }
+
+  public onReady() {
+    // setup subscriber
+    InMemoryKVAndPubSub.subscribe(
+      `${FLORO_TEXT_PREFIX}:current_sha_changed:${metaFile.repositoryId}:${this.buildSha}`,
+      async (sha: string) => {
+        if (sha && this.currentSha != sha) {
+          const textString = InMemoryKVAndPubSub?.get(
+            `${FLORO_TEXT_PREFIX}:text:${metaFile.repositoryId}:${this.buildSha}`
+          );
+          if (textString) {
+            const text = JSON.parse(textString) as LocalizedPhrases;
+            this.currentText = text;
+            this.currentSha = sha;
+            this.currentTextString = JSON.stringify(text);
+          }
+          const localeLoadsString = InMemoryKVAndPubSub.get(
+            `${FLORO_TEXT_PREFIX}:locale_loads:${metaFile.repositoryId}:${this.buildSha}`
+          );
+          if (localeLoadsString) {
+            const localeLoads = JSON.parse(localeLoadsString) as {
+              [key: string]: string;
+            };
+            this.currentLocaleLoads = localeLoads;
+            this.currentLocaleLoadsString = localeLoadsString;
+          }
+        }
+      }
+    );
+
+    // hydrate persisted state
+    const currSha = InMemoryKVAndPubSub?.get(
+      `${FLORO_TEXT_PREFIX}:current_sha:${metaFile.repositoryId}:${this.buildSha}`
+    );
+    if (currSha && this.currentSha != currSha) {
+      const textString = InMemoryKVAndPubSub?.get(
+        `${FLORO_TEXT_PREFIX}:text:${metaFile.repositoryId}:${this.buildSha}`
+      );
+      if (textString) {
+        const text = JSON.parse(textString) as LocalizedPhrases;
+        this.currentText = text;
+        this.currentSha = currSha;
+        this.currentTextString = textString;
+      }
+
+      const localeLoadsString = InMemoryKVAndPubSub?.get(
+        `${FLORO_TEXT_PREFIX}:locale_loads:${metaFile.repositoryId}:${this.buildSha}`
+      );
+      if (localeLoadsString) {
+        const localeLoads = JSON.parse(localeLoadsString) as {
+          [key: string]: string;
+        };
+        this.currentLocaleLoads = localeLoads;
+        this.currentLocaleLoadsString = localeLoadsString;
+      }
+    }
+  }
+
+  public async setText(
+    newSha: string,
+    text: LocalizedPhrases,
+    localeLoads: { [key: string]: string }
+  ) {
+    // setting should be performed as a transaction
+    await InMemoryKVAndPubSub.set(
+      `${FLORO_TEXT_PREFIX}:current_sha:${metaFile.repositoryId}:${this.buildSha}`,
+      newSha
+    );
+    await InMemoryKVAndPubSub.set(
+      `${FLORO_TEXT_PREFIX}:text:${metaFile.repositoryId}:${this.buildSha}`,
+      JSON.stringify(text)
+    );
+    await InMemoryKVAndPubSub.set(
+      `${FLORO_TEXT_PREFIX}:locale_loads:${metaFile.repositoryId}:${this.buildSha}`,
+      JSON.stringify(localeLoads, null, 2)
+    );
+    InMemoryKVAndPubSub.publish(
+      `${FLORO_TEXT_PREFIX}:current_sha_changed:${metaFile.repositoryId}:${this.buildSha}`,
+      newSha
+    );
+  }
+
+  public getText(): LocalizedPhrases {
+    return this.currentText;
+  }
+  public getTextString(): string {
+    return this.currentTextString;
+  }
+  public getLocaleLoads(): { [key: string]: string } {
+    return this.currentLocaleLoads;
+  }
+  public getLocaleLoadsString(): string {
+    return this.currentLocaleLoadsString;
+  }
+
+  // You can ignore this method, as Next does not support this optimization
+  public getTextSubSet(localeCode: string, phraseKeys: Set<string>): string {
+    const localizedPhraseKeys = {} as Record<
+      keyof PhraseKeys,
+      PhraseKeys[keyof PhraseKeys]
+    >;
+    const phraseKeyDebugInfo = {} as Record<
+      keyof PhraseKeys,
+      PhraseKeyDebugInfo[keyof PhraseKeys]
+    >;
+    for (const phraseKey of Array.from(phraseKeys) as Array<keyof PhraseKeys>) {
+      localizedPhraseKeys[phraseKey] =
+        this.currentText?.localizedPhraseKeys?.[
+          localeCode as keyof LocalizedPhraseKeys
+        ]?.[phraseKey];
+      phraseKeyDebugInfo[phraseKey] =
+        this.currentText?.phraseKeyDebugInfo?.[phraseKey];
+    }
+    return JSON.stringify({
+      locales: this.currentText.locales,
+      localizedPhraseKeys: {
+        [localeCode]: localizedPhraseKeys,
+      },
+      phraseKeyDebugInfo,
+    });
+  }
+}
+
+```
+
+### Implementing the Webhook to update text
+
+Please see `src/app/api/webhooks/floro/route.ts`
+
+Let's walk through what's going on here
+
+```typescript
+export async function POST(req: Request) {
+  try {
+    const signature = req.headers.get("floro-signature-256");
+    const body = await req.json();
+    const stringPayload = JSON.stringify(body);
+    const hmac = createHmac("sha256", process?.env?.FLORO_WEBHOOK_SECRET ?? "");
+    const reproducedSignature =
+      "sha256=" + hmac.update(stringPayload).digest("hex");
+
+    // we're confirming the request came from floro
+    if (signature == reproducedSignature) {
+      if (body.event == "test") {
+        return NextResponse.json(
+          {},
+          {
+            status: 200,
+          }
+        );
+      }
+      // we're confirming we're talking about the correct repo
+      if (body?.repositoryId != metaFile.repositoryId) {
+        return NextResponse.json(
+          {},
+          {
+            status: 200,
+          }
+        );
+      }
+      const payload = body?.payload;
+      // we're confirming the floro branch was not updated to a null commit state
+      if (!payload?.branch?.lastCommit) {
+        return NextResponse.json(
+          {},
+          {
+            status: 200,
+          }
+        );
+      }
+      if (payload?.branch?.id != "main") {
+        return NextResponse.json(
+          {},
+          {
+            status: 200,
+          }
+        );
+      }
+
+      try {
+        // In prod this should be https://api.floro.io
+        // In dev you can query your local floro daemon at http://localhost:63403. This allows you to confirm
+        // the webhook logic works as expected
+        const apiServer =
+          process?.env?.FLORO_API_SERVER ?? "http://localhost:63403";
+        // first we request a link. In prod, the link is a signed url pointing to the floro CDN, in dev it's just
+        // a link to your commit state from your floro daemon
+        const stateLinkRequest = await fetch(
+          `${apiServer}/public/api/v0/repository/${metaFile.repositoryId}/commit/${payload.branch.lastCommit}/stateLink`,
+          {
+            headers: {
+              "floro-api-key": process?.env?.FLORO_API_KEY ?? "",
+            },
+          }
+        );
+        if (!stateLinkRequest) {
+          return NextResponse.json(
+            {},
+            {
+              status: 400,
+            }
+          );
+        }
+        const { stateLink } = await stateLinkRequest.json();
+        if (!stateLink) {
+          return NextResponse.json(
+            {},
+            {
+              status: 400,
+            }
+          );
+        }
+        const stateRequest = await fetch(
+          stateLink
+        );
+        // We now retrieve the state of the commit. The state is in non-KV form
+        // (ie. it is the tree state representation of the commit).
+        const state = await stateRequest.json();
+        if (!state?.store?.text) {
+          return NextResponse.json(
+            {},
+            {
+              status: 400,
+            }
+          );
+        }
+        const textUpdateJSON: LocalizedPhrases = await getJSON(state.store);
+        const textUpdate = getUpdatedText(textUpdateJSON);
+        const loadsLoads: { [key: string]: string } = {};
+
+        for (const localeCode in textUpdate.localizedPhraseKeys) {
+          const jsonString = JSON.stringify(
+            textUpdate.localizedPhraseKeys[
+              localeCode as keyof typeof textUpdate.localizedPhraseKeys
+            ]
+          );
+          const sha = shortHash(jsonString);
+          const fileName = `${localeCode}.${sha}.json`;
+          // write to disk or upload to CDN here
+          // Here we are actually uploading the storage bucket our CDN read from in prod.
+          // This would be something like S3
+          const didWrite = await StaticLocaleStorageAccessor.writeLocales(
+            fileName,
+            jsonString
+          );
+          if (didWrite) {
+            loadsLoads[localeCode] = fileName;
+          } else {
+            // if we don't write, then don't publish
+            return NextResponse.json(
+              {},
+              {
+                status: 400,
+              }
+            );
+          }
+        }
+        // If everthing succeeds we can now update our text store. All SSR and client code will consume
+        // the updated content
+        FloroTextStore.getInstance().setText(
+          payload.branch.lastCommit,
+          textUpdate,
+          loadsLoads
+        );
+        return NextResponse.json(
+          {},
+          {
+            status: 200,
+          }
+        );
+      } catch (e) {
+        console.log("Text update failed", e);
+        return NextResponse.json(
+          {
+            message: "You dun goof'd",
+          },
+          {
+            status: 500,
+          }
+        );
+      }
+    } else {
+      return NextResponse.json(
+        {
+          message: "Forbidden",
+        },
+        {
+          status: 403,
+        }
+      );
+    }
+  } catch (e) {
+    console.log("Webhook failed", e);
+    return NextResponse.json(
+      {
+        message: "You dun goof'd",
+      },
+      {
+        status: 500,
+      }
+    );
+  }
+}
+
+```
+
+
 
 ## Remote API Key (Prerequisite)
 

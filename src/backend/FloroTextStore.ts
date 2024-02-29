@@ -136,6 +136,7 @@ export default class FloroTextStore {
     return this.currentLocaleLoadsString;
   }
 
+  // You can ignore this method, as Next does not support this optimization
   public getTextSubSet(localeCode: string, phraseKeys: Set<string>): string {
     const localizedPhraseKeys = {} as Record<
       keyof PhraseKeys,
