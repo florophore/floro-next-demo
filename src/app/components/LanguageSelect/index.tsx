@@ -6,9 +6,7 @@ import { useIcon } from "@/app/floro_infra/contexts/icons/FloroIconsProvider";
 import { useFloroLocales } from "@/app/floro_infra/contexts/text/FloroLocalesContext";
 import styles from "./LanguageSelect.module.css";
 
-interface Props {}
-
-const LanguageSelect = (props: Props) => {
+const LanguageSelect = () => {
   const [isHovered, setIsHovered] = useState(false);
 
   const langIcon = useIcon(

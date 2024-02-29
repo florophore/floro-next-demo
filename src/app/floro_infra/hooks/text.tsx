@@ -1,6 +1,5 @@
 import React, { useCallback, useMemo } from "react";
 import {
-  DebugInfo,
   Locales,
   PhraseKeys,
   getDebugInfo,
@@ -56,7 +55,9 @@ export const useRichText = <K extends keyof PhraseKeys>(phraseKey: K) => {
         phraseKey,
         args
       );
-      const _renderers: TextRenderers<keyof PhraseKeys[K]["styledContents"] & string> = {
+      const _renderers: TextRenderers<
+        keyof PhraseKeys[K]["styledContents"] & string
+      > = {
         ...(richTextRenderers ?? {}),
         ...(renderers ?? {}),
       };

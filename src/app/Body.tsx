@@ -1,6 +1,6 @@
 "use client"
-//import type { Metadata } from "next";
-import { Inter, Maven_Pro } from "next/font/google";
+
+import { Maven_Pro } from "next/font/google";
 import { ColorTheme, useColorTheme } from "./floro_infra/contexts/themes/ColorThemeProvider";
 import { useMemo } from "react";
 import { useFloroThemes } from "./floro_infra/contexts/themes/FloroThemesProvider";

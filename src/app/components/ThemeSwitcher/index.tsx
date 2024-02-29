@@ -1,14 +1,12 @@
 "use client"
 
-import React, { useMemo, useCallback, useState, useEffect } from "react";
+import React, { useMemo, useCallback } from "react";
 import styles from "./ThemeSwitch.module.css";
 import { useThemePreference } from "@/app/floro_infra/contexts/themes/ThemePreferenceProvider";
 import { useIcon } from "@/app/floro_infra/contexts/icons/FloroIconsProvider";
 import { useFloroPalette } from "@/app/floro_infra/contexts/palette/FloroPaletteProvider";
 
-interface Props {}
-
-const ThemeSwitcher = (props: Props) => {
+const ThemeSwitcher = () => {
   const { currentTheme, selectColorTheme } = useThemePreference();
 
   const sunIcon = useIcon("front-page.sun");

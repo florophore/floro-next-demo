@@ -8,7 +8,6 @@ import defaultText from "../../floro_modules/text-generator/default.text";
 import { useFloroText } from "./FloroTextContext";
 import { setCookie } from "cookies-next";
 
-
 const FloroLocalesContext = React.createContext({
   localeCodes: Object.keys(defaultText.locales),
   locales: Object.values(defaultText.locales),

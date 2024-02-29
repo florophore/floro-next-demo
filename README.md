@@ -33,6 +33,8 @@ If you want to actually experience the demo in full, please download the Floro D
 ### Add the Chrome Extension
 [Add Floro Extension](https://chromewebstore.google.com/detail/floro/eimdhkkmhlaieggbggapcoohmefbnlkh)
 
+The chrome extension is a little beta still. If it loses its mind go to chrome://extensions and refresh the plugin.
+
 #### Clone the Floro Repository in Floro
 Next clone the repository for this project
 [Clone Floro Repo Here](https://github.com/florophore/floro-next-demo).
@@ -373,6 +375,22 @@ You're also able to access your palette and themes in any component. `src/app/co
   const isLight = useMemo(() => {
     return currentTheme == "light";
   }, [currentTheme]);
+
+  return (
+    ...
+        <div
+          className={styles["switch-toggle"]}
+          style={{
+            left: isLight ? 2 : 26,
+            background: isLight
+              ? palette.white.regular ?? ""
+              : palette.black.regular ?? "",
+          }}
+        >
+          <img className={styles.icon} src={isLight ? sunIcon : moonIcon} />
+        </div>
+    ...
+  )
 ```
 
 (Theme Example with Variant States)

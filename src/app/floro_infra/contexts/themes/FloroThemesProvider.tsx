@@ -1,13 +1,13 @@
-"use client"
+"use client";
 
-import React, {useCallback, useContext, useMemo} from 'react';
-import metaFile from '../../meta.floro.json';
+import React, { useContext, useMemo } from "react";
+import metaFile from "../../meta.floro.json";
 import initThemes, {
   ThemeColors,
-} from '../../floro_modules/themes-generator/index';
-import {getJSON} from '@floro/themes-generator';
-import {useWatchFloroState} from '../../hooks/watch';
-import {ColorTheme, useColorTheme} from './ColorThemeProvider';
+} from "../../floro_modules/themes-generator/index";
+import { getJSON } from "@floro/themes-generator";
+import { useWatchFloroState } from "../../hooks/watch";
+import { ColorTheme, useColorTheme } from "./ColorThemeProvider";
 
 const FloroThemesContext = React.createContext(initThemes);
 export interface Props {
@@ -29,26 +29,31 @@ export const useFloroThemes = () => {
 };
 
 export const makeThemeCallback = <K extends keyof ThemeColors>(
-  colorThemes: ColorTheme,
+  colorThemes: ColorTheme
 ) => {
   return (
     key: K,
-    variantKey: keyof ThemeColors[K]['variants'] | 'default' = 'default' as keyof ThemeColors[K]['variants'] | 'default',
-    defaultValue?: string,
+    variantKey: keyof ThemeColors[K]["variants"] | "default" = "default" as
+      | keyof ThemeColors[K]["variants"]
+      | "default",
+    defaultValue?: string
   ) => {
-    if (variantKey && variantKey != 'default') {
-      return colorThemes[key]?.['variants']?.[variantKey] ?? 'transparent';
+    if (variantKey && variantKey != "default") {
+      return colorThemes[key]?.["variants"]?.[variantKey] ?? "transparent";
     }
-    return colorThemes[key]?.default ?? defaultValue ?? 'transparent';
+    return colorThemes[key]?.default ?? defaultValue ?? "transparent";
   };
 };
 
 export const useThemedColor = <K extends keyof ThemeColors>(
-    key: K,
-    variantKey: keyof ThemeColors[K]['variants'] | 'default',
-    defaultValue?: string,
+  key: K,
+  variantKey: keyof ThemeColors[K]["variants"] | "default",
+  defaultValue?: string
 ) => {
   const colorTheme = useColorTheme();
-  const callback = useMemo(() => makeThemeCallback(colorTheme),[colorTheme])
-  return useMemo(() => callback(key, variantKey as "default", defaultValue), [key, variantKey, defaultValue])
-}
+  const callback = useMemo(() => makeThemeCallback(colorTheme), [colorTheme]);
+  return useMemo(
+    () => callback(key, variantKey as "default", defaultValue),
+    [key, variantKey, defaultValue]
+  );
+};
