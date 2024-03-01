@@ -34,7 +34,7 @@ If you want to actually experience the demo in full, please download the Floro D
 ### Add the Chrome Extension
 [Add Floro Extension](https://chromewebstore.google.com/detail/floro/eimdhkkmhlaieggbggapcoohmefbnlkh)
 
-The chrome extension is a little beta still. If it loses its mind go to chrome://extensions and refresh the plugin.
+The chrome extension is a little (very) beta still. If it bugs out go to chrome://extensions and refresh the plugin.
 
 #### Clone the Floro Repository in Floro
 Next clone the repository for this project
@@ -156,7 +156,7 @@ Before we start ripping things out, we should make sure everything builds correc
 ```bash
 # cwd = project root
 cd src/app/floro_infra
-floro module sync -b
+floro module build
 ```
 
 If you see
@@ -1142,6 +1142,7 @@ export async function POST(req: Request) {
           }
         );
       }
+      // we only care when the main branch is changed
       if (payload?.branch?.id != "main") {
         return NextResponse.json(
           {},
@@ -1282,7 +1283,7 @@ export async function POST(req: Request) {
 
 ## Remote API Key (Prerequisite)
 
-1) Depending on if your repository is a personal or organization, navigate in floro either to your home dashboard or the organization dashboard.
+1) Depending on if your repository is a personal repository or organization repository, navigate in floro either to your home dashboard or the organization dashboard.
 
 2) In either case click `Developer Settings`
 
@@ -1330,8 +1331,62 @@ export async function POST(req: Request) {
 
 <img src="./docs/imgs/enable_remote.png" width="600">
 
+## CI & Deployment
 
-### Developing with Floro
+CI is relatively straightforward. If you repo is private, you will need to create a remote API key to pull the changes.
+
+An example of GH actions would be (you need to pull your npm deps before floro can build floro_modules)
+
+```yaml
+      - name: Install dependencies
+        run: npm install
+
+      - name: Add Floro CLI
+        run: npm install -g floro
+
+      - name: Build Floro Assets
+        working-directory: packages/common-generators
+        run: floro module build
+        env:
+          FLORO_REMOTE_API_KEY: ${{ secrets.FLORO_REMOTE_API_KEY }}
+```
+
+Here is an example of the <a href="https://github.com/florophore/floro-mono/blob/main/.github/workflows/create_build.yaml">github actions script</a> used on floro.io.
+
+
+In this example `floro build` uses the ENV VAR FLORO_REMOTE_API_KEY. In some cases you may not want the key saved in envs. An example of this is a docker container. In that case, you can pass the key in as an argument. To do that you can do the following
+
+Example Dockerfile:
+
+```dockerfile
+FROM node:16.16.0-alpine
+
+....
+
+ARG floro_remote_api_key_arg
+
+...
+
+RUN yarn install
+
+RUN npm install -g floro
+
+RUN floro module build -m packages/common-generators/floro.module.js -k $floro_remote_api_key_arg
+
+```
+
+Which could be invoked form a CI environment like so
+
+```bash
+docker build --build-arg floro_remote_api_key_arg=${{ secrets.FLORO_REMOTE_API_KEY }}
+```
+
+### Syncing Build Assets to CDN
+
+If you run an asset sync job to your CDN separate from building a container or binary, remember to run floro_module_build before your sync job.
+
+
+## Developing with Floro
 
 For developers, we recommend avoiding branches and pushing to and pulling from main directly. I know, this sounds like advice that breaks everything you know about good version control hygiene but it's the simplest approach to dealing with submoduled system designs and makes the collaborative experience far simpler. This does mean you will be merging and resolving floro merge conflicts locally, not in merge requests. Remember, floro state is data, not code, it's easy to over analogize floro to git. Structured version control does not have the same risks as plain text version control.
 
