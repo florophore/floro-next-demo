@@ -156,7 +156,7 @@ Before we start ripping things out, we should make sure everything builds correc
 ```bash
 # cwd = project root
 cd src/app/floro_infra
-floro module build
+floro module sync -b
 ```
 
 If you see
