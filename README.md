@@ -1383,14 +1383,14 @@ docker build --build-arg floro_remote_api_key_arg=${{ secrets.FLORO_REMOTE_API_K
 
 ### Syncing Build Assets to CDN
 
-If you run an asset sync job to your CDN separate from building a container or binary, remember to run floro_module_build before your sync job.
+If you run an asset sync job to your CDN separate from building a container or binary, remember to install npm deps, install the floro cli globally, and then run `floro module build` before your sync job/action.
 
 
 ## Developing with Floro
 
 For developers, we recommend avoiding branches and pushing to and pulling from main directly. I know, this sounds like advice that breaks everything you know about good version control hygiene but it's the simplest approach to dealing with submoduled system designs and makes the collaborative experience far simpler. This does mean you will be merging and resolving floro merge conflicts locally, not in merge requests. Remember, floro state is data, not code, it's easy to over analogize floro to git. Structured version control does not have the same risks as plain text version control.
 
-Whatever the case may be you, if you are adding content to floro and developing features in tandem, you will need to your floro changes to end up in your main floro branch before you can merge your git changes into your git main branch.
+Whatever the case may be you, if you are adding content to floro and developing features in tandem, you will need your floro changes to end up in your main floro branch before you can merge your git changes into your git main branch.
 
 #### (Re)Building your WIP
 
