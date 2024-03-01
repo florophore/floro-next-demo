@@ -1333,7 +1333,7 @@ export async function POST(req: Request) {
 
 ## CI & Deployment
 
-CI is relatively straightforward. If you repo is private, you will need to create a remote API key to pull the changes.
+CI is relatively straightforward. If your repo is private, you will need to create a remote API key to pull the changes.
 
 An example of GH actions would be (you need to pull your npm deps before floro can build floro_modules)
 
