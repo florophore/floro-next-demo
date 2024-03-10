@@ -77,9 +77,9 @@ If you click "turn on floro edit mode". You should be able to start freely editi
 
 Note: By hydration files, we are referring to phrase translations you do not need immediately (they appear under `public/locales/` after a floro build). For example, if you request a page with the spanish cookie specified, the chinese phrases will not be included in the initial page html. When the javascript loads, the phrases for the languages not present in the initial page request will be fetched from your CDN. See `src/app/floro_infra/contexts/text/FloroTextContext.tsx`
 
-<i>Disclaimer: Due to the limitations of how Next serializes context props in SSR and the inability to double render in layouts, it is not possible to filter the returned keys to only the keys required by the page being rendered in the SSR html. In other words, every time you make a page request, you are returning the entire collection of phrases your application consumes (for the preferred locale). This is an unfortunate side effect of a very leaky SSR abstraction (Next is really designed for SSG not SSR) that not even static analysis or RSC can save us from.  For the vast majority of applications this is likely not a problem, especially if you are supplementing floro with something like a headless CMS. However, if this poses a problem for you there are two options. 1) Forgo real time floro updates (In this case, you may remove the cache and CDN aspects described in the system design). 2) Switch to an alternative framework that allows for manual hydration with SSR (e.g. Remix, Express/Vite)</i>.
+<i>Disclaimer: Due to the limitations of how Next serializes context props in SSR and the inability to double render in layouts, it is not possible to filter the returned keys to only the keys required by the page being rendered in the SSR html. In other words, every time you make a page request, you are returning the entire collection of phrases your application consumes (for the preferred locale). This is an unfortunate side effect of a very leaky SSR abstraction (Next is really designed for SSG not SSR) that not even static analysis or RSC can save us from.  For the vast majority of applications this is likely not a problem, especially if you are supplementing floro with something like a headless CMS. However, if this poses a problem for you there are three options. 1) Forgo real time floro updates (In this case, you may remove the cache and CDN aspects described in the system design). 2) Switch to an alternative framework that allows for manual hydration with SSR (e.g. Remix, Express/Vite) 3) Forgo live preview, remove the FloroTextStore (Redis) and use only RSC components (see the `getRichTextComponent` call described below)</i>.
 
-<i>Please note: This problem is not limited to Floro but would exist for any i18n solution that provided a mechanism for live string updates.</i>
+<i>Please note: This problem is not limited to Floro but would exist for any i18n solution that provided a mechanism for live string updates or local previews.</i>
 
 <i>Also shameless plug: If your team is reaching the point where you realize its time to get off of Next but don't know what to do, consider hiring me, I'm really good at building robust SSR frameworks. Here is how our <a href="https://github.com/florophore/floro-mono/blob/main/packages/servers/src/AppServer.ts#L227">Vite + Express</a> implementation looks.</i>
 
@@ -452,6 +452,83 @@ What does the icon api look like? The LanguageSelect gives a good example see `s
 ```
 
 ## Text
+
+#### Quick API Overview
+##### Rich Text Component
+```tsx
+  const SomeString = useRichText(
+    "string_examples.some_string"
+  );
+
+  return (
+    <div>
+      <SomeString intArg={1} stringArg={"test"}/>
+    </div>
+  )
+
+```
+
+##### Plain Text
+```tsx
+  const someString  = usePlainText(
+    "string_examples.some_string",
+    {
+      intArg: 1,
+      stringArg: "test"
+    }
+  );
+
+  return (
+    <div>
+      <span>{someString}</span>
+    </div>
+  )
+```
+
+#### Quick Server Only API Overview
+
+##### Plain Text
+```tsx
+  // Only use this if you cannot use the text context. This is useful for things that
+ // are not rendered by client ever, e.g. sms messages, push notifications, meta tags/static props
+  const someString  = getText(
+    "string_examples.some_string",
+    {
+      intArg: 1,
+      stringArg: "test"
+    }
+  );
+
+  return (
+    <div>
+      <span>{someString}</span>
+    </div>
+  )
+```
+
+##### Rich Text Component
+```tsx
+  /*
+  * !!!WARNING!!!
+  * You should avoid getRichTextComponent if possible. Unless you suffer severe
+  * limitations that force some part of your application to use only RSC, you likely want
+  * to use useRichText
+  */
+
+  // Only use this if you cannot use the text context (Pure RSC)
+  // You will not be able to preview local changes.
+  const SomeString = getRichTextComponent(
+    "string_examples.some_string"
+  );
+
+  return (
+    <div>
+      <SomeString intArg={1} stringArg={"test"}/>
+    </div>
+  );
+```
+
+
 The best way to get the hang of the Text API is to look at the code in `src/app/string-examples/StringExamples.tsx`.
 
 <img src="./docs/imgs/pluralization_example.png" width="800">
@@ -747,7 +824,7 @@ This is the signature table of all the phrases used in the demo app.
 
 Once, we have this table for our app, we can allow anyone on our team to delete the <b>cart_total</b> phrase and update the value of the <b>welcome_banner</b> phrase without having to worry if we broke our application. This is great since we can make updates to our future builds without compromising on real time updates to our existing (live) build.
 
-To produce this though we need to find all the instances of the source code that call `useRichText`, `usePlainText`, and `getText` and then record the interfaces of all the method signatures. For this we need to use the `ts-morph` library to search our AST.
+To produce this though we need to find all the instances of the source code that call `useRichText`, `usePlainText`, `getRichTextComponent`, and `getText` and then record the interfaces of all the method signatures. For this we need to use the `ts-morph` library to search our AST.
 
 ### Post Processing
 
@@ -816,6 +893,25 @@ const floroTextStoreSource = project.getSourceFile(floroTextStorePath);
 const getTextNode = floroTextStoreSource.getVariableDeclaration('getText');
 const getTextSourceRefs = languageService.findReferences(getTextNode.getNameNode());
 for (const sourceRef of getTextSourceRefs) {
+  const refs = sourceRef.getReferences();
+  for (const ref of refs) {
+    const callee = ref.getNode().getParentIfKind(SyntaxKind.CallExpression);
+    if (callee) {
+      const args = callee.getArguments();
+      const keyArg = args[1].getText();
+      phraseKeys.add(unescapePhraseKey(keyArg));
+    }
+  }
+}
+
+/***
+ *
+ * You only need this if you aren't using the floro text context. You may use this for a pure RSC
+ * approach, however, you will not be able to test changes locally. You should use useRichText if you can.
+ */
+const getRichTextComponentNode = floroTextStoreSource.getVariableDeclaration('getRichTextComponent');
+const getRichTextComponenteRefs = languageService.findReferences(getRichTextComponentNode.getNameNode());
+for (const sourceRef of getRichTextComponenteRefs) {
   const refs = sourceRef.getReferences();
   for (const ref of refs) {
     const callee = ref.getNode().getParentIfKind(SyntaxKind.CallExpression);

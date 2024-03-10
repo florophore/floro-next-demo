@@ -1,3 +1,5 @@
+"use client"
+
 import { MouseEvent, useCallback, useMemo, useState } from "react";
 import { DebugInfo, PhraseKeys } from "../floro_modules/text-generator";
 import { RichTextProps, TextRenderers } from "../renderers/RichTextRenderer";

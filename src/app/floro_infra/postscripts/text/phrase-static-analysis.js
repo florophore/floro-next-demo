@@ -68,6 +68,25 @@ for (const sourceRef of getTextSourceRefs) {
   }
 }
 
+/***
+ *
+ * You only need this if you aren't using the floro text context. You may use this for a pure RSC
+ * approach, however, you will not be able to test changes locally. You should use useRichText if you can.
+ */
+const getRichTextComponentNode = floroTextStoreSource.getVariableDeclaration('getRichTextComponent');
+const getRichTextComponenteRefs = languageService.findReferences(getRichTextComponentNode.getNameNode());
+for (const sourceRef of getRichTextComponenteRefs) {
+  const refs = sourceRef.getReferences();
+  for (const ref of refs) {
+    const callee = ref.getNode().getParentIfKind(SyntaxKind.CallExpression);
+    if (callee) {
+      const args = callee.getArguments();
+      const keyArg = args[1].getText();
+      phraseKeys.add(unescapePhraseKey(keyArg));
+    }
+  }
+}
+
 const localesStatic = JSON.stringify(Array.from(phraseKeys), null, 2);
 fs.writeFileSync(
   path.join(__dirname, "../../floro_modules/text-generator/locales.static.json"),

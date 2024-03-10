@@ -13,6 +13,7 @@ import initLocaleLoads from "../app/floro_infra/floro_modules/text-generator/loc
 import staticStructure from "../app/floro_infra/floro_modules/text-generator/static-structure.json" assert { type: "json" };
 import InMemoryKVAndPubSub from "./InMemoryKVAndPubSub";
 import { PlainTextRenderers, plainTextRenderers } from "@/app/floro_infra/renderers/PlainTextRenderer";
+import { getRichText } from "@/app/floro_infra/serverhelpers/text";
 
 const FLORO_TEXT_PREFIX = `floro_text_repo:${staticStructure.hash}`;
 
@@ -201,6 +202,15 @@ export const getText = <
     args
   );
   return renderers.render(nodes, renderers, debugInfo?.groupName, debugInfo?.phraseKey, selectedLocaleCode);
+};
+
+export const getRichTextComponent = <K extends keyof PhraseKeys>(
+  selectedLocaleCode: keyof LocalizedPhrases["locales"] & string,
+  phraseKey: K,
+) => {
+  const textStore = FloroTextStore.getInstance();
+  const floroText = textStore.getText();
+  return getRichText(floroText, selectedLocaleCode, phraseKey);
 };
 
 
