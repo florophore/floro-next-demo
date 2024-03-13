@@ -3,6 +3,12 @@
 This repository should serve as both a demo and a guide for integrating Floro into your own application. This demo is built with Next 14, but you should be able to use this as a guide to integrate into nearly any node-based server application. It is easiest to get the demo to work first and then copy parts of the demo code into your own application.
 
 
+### <a href="https://www.youtube.com/watch?v=8quVOBR1rbU">You can watch the following demo on YouTube to get an idea of how to setup the demo environment</a>
+
+[![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/8quVOBR1rbU/0.jpg)](https://www.youtube.com/watch?v=8quVOBR1rbU)
+
+(Note: the demo uses Remix but the same concepts should apply to Next)
+
 ## Getting the Demo to work
 
 You will need the floro cli to build the floro modules
