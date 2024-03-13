@@ -13,6 +13,10 @@ import { getJSON } from "@floro/text-generator";
 import FloroTextStore from "@/backend/FloroTextStore";
 import StaticLocaleStorageAccessor from "@/backend/StaticLocalesStorageAccessor";
 
+// Needed for development fetch
+if (process.env.NODE_ENV == "development") {
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+}
 const initText = importText as unknown as LocalizedPhrases;
 
 const argsAreSame = (
@@ -144,7 +148,7 @@ export async function POST(req: Request) {
 
       try {
         const apiServer =
-          process?.env?.FLORO_API_SERVER ?? "http://localhost:63403";
+          process?.env?.FLORO_API_SERVER ?? "http://127.0.0.1:63403";
         const stateLinkRequest = await fetch(
           `${apiServer}/public/api/v0/repository/${metaFile.repositoryId}/commit/${payload.branch.lastCommit}/stateLink`,
           {

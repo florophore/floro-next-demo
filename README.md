@@ -1263,7 +1263,7 @@ export async function POST(req: Request) {
         // In dev you can query your local floro daemon at http://localhost:63403. This allows you to confirm
         // the webhook logic works as expected
         const apiServer =
-          process?.env?.FLORO_API_SERVER ?? "http://localhost:63403";
+          process?.env?.FLORO_API_SERVER ?? "http://127.0.0.1:63403";
         // first we request a link. In prod, the link is a signed url pointing to the floro CDN, in dev it's just
         // a link to your commit state from your floro daemon
         const stateLinkRequest = await fetch(
