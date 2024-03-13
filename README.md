@@ -94,6 +94,18 @@ If you want to play around with translating between languages, you will need a D
 If you want to play around with the ChatGPT features (this includes automatic pluralization & genderization, term detection, as well as general suggestion prompting), you will need to supply your own OpenAI API key. See the <a href="https://platform.openai.com/docs/quickstart?context=curl">OpenAI Api Key docs</a>.
 
 
+### Playing with the demo
+
+Feel free to setup the demo as if it were the application you intend to deploy. create a `.env.local` file at the root of your repository and fill in in the following keys.
+
+```
+FLORO_API_KEY="<your local api key secret>"
+FLORO_WEBHOOK_SECRET="<your webhook key secret>"
+```
+
+You can now test features out such as committing in floro locally and seeing the floro text state update (without the chrome extension) after a page re-fresh (make sure the local webhook in the floro next-demo repository points to /api/webhooks/floro). See the documentation below in the Remote API Key section.
+
+
 ### Plugin Documentation
 
 For documentation focused specifically on the plugins Demonstrated in this demo, please consult the <a href="https://floro.io/docs">Floro Documentation</a>.
@@ -107,8 +119,6 @@ Floro can be incrementally integrated into your app. I strongly recommend not co
 
 
 ### What plugin features do you want/need?
-
-There are some features not explicitly demonstrated in the demo. You can, for example, make your app checks for new translations every time it launches and update the strings (that are SAFE TO UPDATE) if they are on the <b>main floro remote branch head</b>.
 
 - ### Palette
   - Do you want to be able to change every color in your app? I do not personally use this feature in the floro.io website but there may be some benefit if you have a designer on your team who changes colors often or if you have an expansive color palette. This is mostly an upstream plugin dependency but does not need to be included as a generator at runtime (for most apps).

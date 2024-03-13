@@ -27,7 +27,7 @@ export interface TextDebugOptions {
   debugTextColorHex: string;
 }
 
-type RTCallbackProps<K extends keyof PhraseKeys> = {
+export type RTCallbackProps<K extends keyof PhraseKeys> = {
   renders?: TextRenderers<keyof PhraseKeys[K]["styledContents"] & string>;
   debugHex?: `#${string}`;
   debugTextColorHex?: `#${string}`;
