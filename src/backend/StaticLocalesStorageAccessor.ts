@@ -14,7 +14,10 @@ export default class StaticLocaleStorageAccessor {
         localesJson: string
     ): Promise<boolean> {
         try {
-            // If using a CDN upload here
+            if (process.env.NODE_ENV == "production") {
+                // If using a CDN upload here
+                return true;
+            }
             const filePath = path.join(localesDir, fileName);
             await fs.writeFile(filePath, Buffer.from(localesJson), {});
             return true;
